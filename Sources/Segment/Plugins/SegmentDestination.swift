@@ -8,11 +8,12 @@
 import Foundation
 import Sovran
 
-#if os(Linux)
+#if os(Linux) || os(Windows)
 // Whoever is doing swift/linux development over there
 // decided that it'd be a good idea to split out a TON
 // of stuff into another framework that NO OTHER PLATFORM
 // has; I guess to be special.  :man-shrugging:
+// Since Linux and Windows use the open source swift-corelibs-foundation
 import FoundationNetworking
 #endif
 

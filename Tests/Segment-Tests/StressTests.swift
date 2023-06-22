@@ -19,7 +19,7 @@ class StressTests: XCTestCase {
     }
     
     // Linux doesn't know what URLProtocol is and on watchOS it somehow works differently and isn't hit.
-    #if !os(Linux) && !os(watchOS)
+    #if !os(Linux) && !os(watchOS) && !os(Windows)
     func testStorageStress() throws {
         // register our network blocker
         guard URLProtocol.registerClass(BlockNetworkCalls.self) else { XCTFail(); return }

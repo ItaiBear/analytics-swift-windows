@@ -33,7 +33,7 @@
 
 // MARK: Common
 
-#if !os(Linux) && !os(macOS)
+#if !os(Linux) && !os(macOS) && !os(Windows)
 
 import Foundation
 import Segment

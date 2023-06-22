@@ -32,7 +32,7 @@ final class MemoryLeak_Tests: XCTestCase {
          
         let context = analytics.find(pluginType: Context.self)!
         
-        #if !os(Linux)
+        #if !os(Linux) && !os(Windows)
         let deviceToken = analytics.find(pluginType: DeviceToken.self)!
         #endif
         #if os(iOS) || os(tvOS) || targetEnvironment(macCatalyst)
@@ -51,7 +51,7 @@ final class MemoryLeak_Tests: XCTestCase {
         segmentDest.remove(plugin: destMetadata)
          
         analytics.remove(plugin: context)
-        #if !os(Linux)
+        #if !os(Linux) && !os(Windows)
         analytics.remove(plugin: deviceToken)
         #endif
         #if os(iOS) || os(tvOS) || targetEnvironment(macCatalyst)
@@ -72,7 +72,7 @@ final class MemoryLeak_Tests: XCTestCase {
         checkIfLeaked(startupQueue)
         
         checkIfLeaked(context)
-        #if !os(Linux)
+        #if !os(Linux) && !os(Windows)
         checkIfLeaked(deviceToken)
         #endif
         #if os(iOS) || os(tvOS) || targetEnvironment(macCatalyst)

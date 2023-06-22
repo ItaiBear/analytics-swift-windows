@@ -5,7 +5,7 @@
 //  Created by Cody Garvin on 6/10/21.
 //
 
-#if !os(Linux)
+#if !os(Linux) && !os(Windows)
 
 import Foundation
 

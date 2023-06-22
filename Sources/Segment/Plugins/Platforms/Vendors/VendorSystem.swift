@@ -78,6 +78,8 @@ internal class VendorSystem {
         return watchOSVendorSystem()
         #elseif os(Linux)
         return LinuxVendorSystem()
+        #elseif os(Windows)
+        return WindowsVendorSystem()
         #else
         return VendorSystem()
         #endif

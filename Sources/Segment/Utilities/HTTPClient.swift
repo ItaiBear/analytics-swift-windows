@@ -6,7 +6,7 @@
 //
 
 import Foundation
-#if os(Linux)
+#if os(Linux) || os(Windows)
 import FoundationNetworking
 #endif
 

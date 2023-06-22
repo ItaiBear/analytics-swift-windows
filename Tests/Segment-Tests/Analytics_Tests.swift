@@ -84,7 +84,7 @@ final class Analytics_Tests: XCTestCase {
     }
     
     // Linux doesn't support XCTExpectFailure
-#if !os(Linux)
+#if !os(Linux) && !os(Windows)
     func testDestinationNotEnabled() {
         // need to clear settings for this one.
         UserDefaults.standard.removePersistentDomain(forName: "com.segment.storage.test")
@@ -151,7 +151,7 @@ final class Analytics_Tests: XCTestCase {
 #endif
         
         // these keys not present on linux
-#if !os(Linux)
+#if !os(Linux) && !os(Windows)
         XCTAssertNotNil(context?["app"], "app missing!")
         XCTAssertNotNil(context?["locale"], "locale missing!")
 #endif

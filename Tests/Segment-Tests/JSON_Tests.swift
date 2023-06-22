@@ -160,7 +160,7 @@ class JSONTests: XCTestCase {
         
         let str = typedDict?["str"] as? String
         let bool = typedDict?["bool"] as? Bool
-        #if os(Linux)
+        #if os(Linux) || os(Windows)
         // the linux implementation of Dictionary has
         // some issues w/ type conversion to float.
         let float = typedDict?["float"] as? Decimal

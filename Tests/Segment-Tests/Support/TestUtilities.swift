@@ -61,7 +61,7 @@ class ZiggyPlugin: EventPlugin {
     }
 }
 
-#if !os(Linux)
+#if !os(Linux) && !os(Windows)
 
 @objc(SEGMyDestination)
 public class ObjCMyDestination: NSObject, ObjCPlugin, ObjCPluginShim {
@@ -147,7 +147,7 @@ extension XCTestCase {
     }
 }
 
-#if !os(Linux)
+#if !os(Linux) && !os(Windows)
 
 class BlockNetworkCalls: URLProtocol {
     var initialURL: URL? = nil
