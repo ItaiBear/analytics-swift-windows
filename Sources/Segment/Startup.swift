@@ -108,10 +108,14 @@ extension Analytics {
         }
     }
 }
-#elseif os(Linux)
+#elseif os(Linux) || os(Windows)
 extension Analytics {
     internal func setupSettingsCheck() {
         checkSettings()
+        // now set up a timer to do it every 24 hrs.
+        QueueTimer.schedule(interval: .days(1), queue: .main) { [weak self] in
+            self?.checkSettings()
+        }
     }
 }
 #endif
