@@ -123,6 +123,14 @@ final class Analytics_Tests: XCTestCase {
         let outputReader = OutputReaderPlugin()
         analytics.add(plugin: outputReader)
         
+#if !os(watchOS) && !os(Linux)
+        // prime the pump for userAgent, since it's retrieved async.
+        let vendorSystem = VendorSystem.current
+        while vendorSystem.userAgent == nil {
+            RunLoop.main.run(until: Date.distantPast)
+        }
+#endif
+        
         waitUntilStarted(analytics: analytics)
         
         // add a referrer
@@ -611,5 +619,26 @@ final class Analytics_Tests: XCTestCase {
         XCTAssertTrue(sourceHit)
         XCTAssertTrue(destHit)
 
+    }
+    
+    func testSharedInstance() {
+        Analytics.firstInstance = nil
+        
+        let dead = Analytics.shared()
+        XCTAssertTrue(dead.isDead)
+        
+        let alive = Analytics(configuration: Configuration(writeKey: "1234"))
+        XCTAssertFalse(alive.isDead)
+        
+        let shared = Analytics.shared()
+        XCTAssertFalse(shared.isDead)
+        
+        XCTAssertTrue(alive === shared)
+        
+        let alive2 = Analytics(configuration: Configuration(writeKey: "ABCD"))
+        let shared2 = Analytics.shared()
+        XCTAssertFalse(alive2 === shared2)
+        XCTAssertTrue(shared2 === shared)
+        
     }
 }
