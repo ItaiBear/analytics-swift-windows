@@ -123,7 +123,7 @@ final class Analytics_Tests: XCTestCase {
         let outputReader = OutputReaderPlugin()
         analytics.add(plugin: outputReader)
         
-#if !os(watchOS) && !os(Linux)
+#if !os(watchOS) && !os(Linux) && !os(Windows)
         // prime the pump for userAgent, since it's retrieved async.
         let vendorSystem = VendorSystem.current
         while vendorSystem.userAgent == nil {
