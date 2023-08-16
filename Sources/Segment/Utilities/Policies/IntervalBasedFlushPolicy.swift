@@ -36,10 +36,11 @@ public class IntervalBasedFlushPolicy: FlushPolicy,
         }
         
         // `flushInterval` can change post-initialization so we subscribe to changes here
-        self.analytics?.store.subscribe(self, initialState: true) { [weak self] (state: System) in
+        self.analytics?.store.subscribe(self, initialState: true, queue: .global()) { [weak self] (state: System) in
             guard let self = self else { return }
             guard let a = self.analytics else { return }
-            self.flushTimer = QueueTimer(interval: a.configuration.values.flushInterval) { [weak self] in
+            self.flushTimer = QueueTimer(interval: a.configuration.values.flushInterval, queue: .global()) { [weak self] in
+                Analytics.segmentLog(message: "flushing because of interval", kind: .debug)
                 self?.analytics?.flush()
             }
         }

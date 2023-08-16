@@ -122,7 +122,8 @@ public class SegmentDestination: DestinationPlugin, Subscriber {
         guard analytics.enabled == true else { return }
 
         // Read events from file system
-        guard let data = storage.read(Storage.Constants.events) else { return }
+        guard let data: [URL] = storage.read(Storage.Constants.events) else { return }
+        analytics.log(message: "Flushing \(data.count) events.")
         
         eventCount = 0
         cleanupUploads()

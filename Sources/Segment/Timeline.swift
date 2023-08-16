@@ -69,8 +69,8 @@ internal class Mediator {
     internal var plugins = [Plugin]()
     internal func execute<T: RawEvent>(event: T) -> T? {
         var result: T? = event
-        
         plugins.forEach { (plugin) in
+            Analytics.segmentLog(message: "executing plugin \(plugin)", kind: .debug)
             if let r = result {
                 // Drop the event return because we don't care about the
                 // final result.

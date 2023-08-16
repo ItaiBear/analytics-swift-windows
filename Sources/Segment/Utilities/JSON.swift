@@ -15,6 +15,7 @@ public enum JSON: Equatable {
     case bool(Bool)
     case number(Decimal)
     case string(String)
+    case data(Data)
     case array([JSON])
     case object([String: JSON])
     
@@ -62,6 +63,8 @@ public enum JSON: Equatable {
             self = .string(url.absoluteString)
         case let string as String:
             self = .string(string)
+        case let data as Data:
+            self = .data(data)
         case let bool as Bool:
             self = .bool(bool)
         case let aSet as Set<AnyHashable>:
@@ -95,6 +98,8 @@ extension JSON: Codable {
             try container.encode(number)
         case let .string(string):
             try container.encode(string)
+        case let .data(data):
+            try container.encode(data)
         case let .array(array):
             try container.encode(array)
         case let .object(object):
@@ -112,6 +117,8 @@ extension JSON: Codable {
             self = .number(number)
         } else if let string = try? container.decode(String.self) {
             self = .string(string)
+        } else if let data = try? container.decode(Data.self) {
+            self = .data(data)
         } else if let array = try? container.decode([JSON].self) {
             self = .array(array)
         } else if let object = try? container.decode([String: JSON].self) {
@@ -166,6 +173,8 @@ extension JSON {
             // fails if this isn't typecast to NSDecimalNumber first.
             result = value as NSDecimalNumber
         case .string(let value):
+            result = value
+        case .data(let value):
             result = value
         case .array(let value):
             result = value.map { item in
@@ -244,6 +253,15 @@ extension JSON {
     public var stringValue: String? {
         switch self {
         case .string(let value):
+            return value
+        default:
+            return nil
+        }
+    }
+
+    public var dataValue: Data? {
+        switch self {
+        case .data(let value):
             return value
         default:
             return nil

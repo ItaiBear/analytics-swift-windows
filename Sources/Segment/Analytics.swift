@@ -77,6 +77,8 @@ public class Analytics {
     internal func process<E: RawEvent>(incomingEvent: E) {
         guard enabled == true else { return }
         let event = incomingEvent.applyRawEventData(store: store)
+
+        self.log(message: "Processing Event: \(event.type ?? "unknown")")
         
         _ = timeline.process(incomingEvent: event)
         

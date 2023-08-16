@@ -22,12 +22,12 @@ internal class QueueTimer {
     
     static var timers = [QueueTimer]()
     
-    static func schedule(interval: TimeInterval, queue: DispatchQueue = .main, handler: @escaping () -> Void) {
+    static func schedule(interval: TimeInterval, queue: DispatchQueue = .global(), handler: @escaping () -> Void) {
         let timer = QueueTimer(interval: interval, queue: queue, handler: handler)
         Self.timers.append(timer)
     }
 
-    init(interval: TimeInterval, queue: DispatchQueue = .main, handler: @escaping () -> Void) {
+    init(interval: TimeInterval, queue: DispatchQueue = .global(), handler: @escaping () -> Void) {
         self.interval = interval
         self.queue = queue
         self.handler = handler

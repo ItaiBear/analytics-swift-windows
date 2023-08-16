@@ -17,7 +17,8 @@ public class StartupQueue: Plugin, Subscriber {
     
     public weak var analytics: Analytics? = nil {
         didSet {
-            analytics?.store.subscribe(self) { [weak self] (state: System) in
+            Analytics.segmentLog(message: "StartupQueue analytics did set.", kind: .debug)
+            analytics?.store.subscribe(self, queue: .global()) { [weak self] (state: System) in
                 self?.runningUpdate(state: state)
             }
         }
@@ -29,6 +30,7 @@ public class StartupQueue: Plugin, Subscriber {
     required init() { }
     
     public func execute<T: RawEvent>(event: T?) -> T? {
+        Analytics.segmentLog(message: "executing StartupQueue. running: \(running)", kind: .debug)
         if running == false, let e = event  {
             // timeline hasn't started, so queue it up.
             syncQueue.sync {

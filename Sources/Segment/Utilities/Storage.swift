@@ -10,12 +10,13 @@ import Sovran
 
 internal class Storage: Subscriber {
     let writeKey: String
-    let userDefaults: UserDefaults?
+    let userPreferences: UserPreferences?
     static let MAXFILESIZE = 475000 // Server accepts max 500k per batch
 
     // This queue synchronizes reads/writes.
     // Do NOT use it outside of: write, read, reset, remove.
     let syncQueue = DispatchQueue(label: "sync.segment.com")
+    let storageQueue = DispatchQueue(label: "storage.segment.com")
 
     private var outputStream: OutputFileStream? = nil
     
@@ -24,21 +25,24 @@ internal class Storage: Subscriber {
     
     init(store: Store, writeKey: String) {
         self.writeKey = writeKey
-        self.userDefaults = UserDefaults(suiteName: "com.segment.storage.\(writeKey)")
-        store.subscribe(self) { [weak self] (state: UserInfo) in
+        self.userPreferences = UserPreferences(suiteName: "com.segment.storage.\(writeKey)")
+        store.subscribe(self, queue: storageQueue) { [weak self] (state: UserInfo) in
             self?.userInfoUpdate(state: state)
         }
-        store.subscribe(self) { [weak self] (state: System) in
+        store.subscribe(self, queue: storageQueue) { [weak self] (state: System) in
             self?.systemUpdate(state: state)
         }
     }
     
     func write<T: Codable>(_ key: Storage.Constants, value: T?) {
+        Analytics.segmentLog(message: "Assigning a write", kind: .debug)
         syncQueue.sync {
             switch key {
             case .events:
                 if let event = value as? RawEvent {
+                    Analytics.segmentLog(message: "writing event \(event.type ?? "unknown")", kind: .debug)
                     let eventStoreFile = currentFile(key)
+                    Analytics.segmentLog(message: "current event store file \(eventStoreFile.path)", kind: .debug )
                     self.storeEvent(toFile: eventStoreFile, event: event)
                     if let flushPolicies = analytics?.configuration.values.flushPolicies {
                         for policy in flushPolicies {
@@ -52,22 +56,28 @@ internal class Storage: Subscriber {
                 }
                 break
             default:
+                Analytics.segmentLog(message: "writing \(key.rawValue)", kind: .debug)
                 if isBasicType(value: value) {
                     // we can write it like normal
-                    userDefaults?.set(value, forKey: key.rawValue)
+                    userPreferences?.set(value, forKey: key.rawValue)
                 } else {
                     // encode it to a data object to store
+                    #if !os(Windows)
                     let encoder = PropertyListEncoder()
+                    #else
+                    let encoder = JSONEncoder()
+                    #endif
                     if let plistValue = try? encoder.encode(value) {
-                        userDefaults?.set(plistValue, forKey: key.rawValue)
+                        userPreferences?.set(plistValue, forKey: key.rawValue)
                     }
                 }
             }
-            userDefaults?.synchronize()
+            userPreferences?.synchronize()
         }
     }
     
     func read(_ key: Storage.Constants) -> [URL]? {
+        Analytics.segmentLog(message: "reading", kind: .debug)
         var result: [URL]? = nil
         syncQueue.sync {
             switch key {
@@ -88,26 +98,32 @@ internal class Storage: Subscriber {
                 // do nothing
                 break
             default:
+                #if !os(Windows)
                 let decoder = PropertyListDecoder()
-                let raw = userDefaults?.object(forKey: key.rawValue)
+                #else
+                let decoder = JSONDecoder()
+                #endif
+                let raw = userPreferences?.object(forKey: key.rawValue)
                 if let r = raw as? Data {
                     // it's an encoded object, not a basic type
                     result = try? decoder.decode(T.self, from: r)
                 } else {
                     // it's a basic type
-                    result = userDefaults?.object(forKey: key.rawValue) as? T
+                    result = userPreferences?.object(forKey: key.rawValue) as? T
                 }
             }
         }
         return result
     }
     
+    #if !os(Windows)
     static func hardSettingsReset(writeKey: String) {
-        guard let defaults = UserDefaults(suiteName: "com.segment.storage.\(writeKey)") else { return }
+        guard let defaults = UserPreferences(suiteName: "com.segment.storage.\(writeKey)") else { return }
         defaults.removeObject(forKey: Constants.anonymousId.rawValue)
         defaults.removeObject(forKey: Constants.settings.rawValue)
         print(Array(defaults.dictionaryRepresentation().keys).count)
     }
+    #endif
     
     func hardReset(doYouKnowHowToUseThis: Bool) {
         syncQueue.sync {
@@ -118,7 +134,7 @@ internal class Storage: Subscriber {
                 // on linux, setting a key's value to nil just deadlocks.
                 // however just removing it works, which is what we really
                 // wanna do anyway.
-                userDefaults?.removeObject(forKey: key.rawValue)
+                userPreferences?.removeObject(forKey: key.rawValue)
             }
 
             for url in urls {
@@ -197,14 +213,17 @@ extension Storage {
 extension Storage {
     private func currentFile(_ key: Storage.Constants) -> URL {
         var currentFile = 0
-        let index: Int = userDefaults?.integer(forKey: key.rawValue) ?? 0
-        userDefaults?.set(index, forKey: key.rawValue)
+        Analytics.segmentLog(message: "Attempting to find index from userPreferences", kind: .debug)
+        let index: Int = userPreferences?.integer(forKey: key.rawValue) ?? 0
+        Analytics.segmentLog(message: "current file index is \(index)", kind: .debug)
+        userPreferences?.set(index, forKey: key.rawValue)
+        Analytics.segmentLog(message: "Set file index in userPreferences", kind: .debug)
         currentFile = index
         return self.eventsFile(index: currentFile)
     }
     
     private func eventStorageDirectory() -> URL {
-        #if os(tvOS) || os(macOS)
+        #if os(tvOS) || os(macOS) || os(Windows)
         let searchPathDirectory = FileManager.SearchPathDirectory.cachesDirectory
         #else
         let searchPathDirectory = FileManager.SearchPathDirectory.documentDirectory
@@ -212,7 +231,7 @@ extension Storage {
         
         let urls = FileManager.default.urls(for: searchPathDirectory, in: .userDomainMask)
         let docURL = urls[0]
-        let segmentURL = docURL.appendingPathComponent("segment/\(writeKey)/")
+        let segmentURL = docURL.appendingPathComponent("segment").appendingPathComponent(writeKey)
         // try to create it, will fail if already exists, nbd.
         // tvOS, watchOS regularly clear out data.
         try? FileManager.default.createDirectory(at: segmentURL, withIntermediateDirectories: true, attributes: nil)
@@ -231,11 +250,15 @@ extension Storage {
         var result = [URL]()
 
         // finish out any file in progress
-        let index = userDefaults?.integer(forKey: Constants.events.rawValue) ?? 0
+        let index = userPreferences?.integer(forKey: Constants.events.rawValue) ?? 0
         finish(file: eventsFile(index: index))
         
+        let storageDir = eventStorageDirectory()
+        Analytics.segmentLog(message: "Event storage directory: \(storageDir.path)", kind: .debug)
         let allFiles = try? FileManager.default.contentsOfDirectory(at: eventStorageDirectory(), includingPropertiesForKeys: [], options: .skipsHiddenFiles)
         var files = allFiles
+
+        Analytics.segmentLog(message: "Total of \(files?.count ?? 0) event files", kind: .debug)
         
         if includeUnfinished == false {
             files = allFiles?.filter { (file) -> Bool in
@@ -279,7 +302,7 @@ extension Storage {
             start(file: storeFile)
             newFile = true
         }
-        
+        Analytics.segmentLog(message: "Opened file \(storeFile.path) to store event \(event.type ?? "unknown")", kind: .debug)
         let jsonString = event.toString()
         do {
             if outputStream == nil {
@@ -290,6 +313,7 @@ extension Storage {
                 try outputStream?.write(",")
             }
             try outputStream?.write(jsonString)
+            Analytics.segmentLog(message: "Stored event \(event.type ?? "unknown") to file: \(storeFile.path)", kind: .debug)
         } catch {
             analytics?.reportInternalError(error)
         }
@@ -355,7 +379,7 @@ extension Storage {
         // necessary for testing, do not use.
         onFinish?(tempFile)
 
-        let currentFile: Int = (userDefaults?.integer(forKey: Constants.events.rawValue) ?? 0) + 1
-        userDefaults?.set(currentFile, forKey: Constants.events.rawValue)
+        let currentFile: Int = (userPreferences?.integer(forKey: Constants.events.rawValue) ?? 0) + 1
+        userPreferences?.set(currentFile, forKey: Constants.events.rawValue)
     }
 }

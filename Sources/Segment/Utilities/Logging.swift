@@ -35,7 +35,7 @@ extension Analytics {
     static internal func segmentLog(message: String, kind: LogKind) {
         #if DEBUG
         if Self.debugLogsEnabled {
-            print("\(kind)\(message)")
+            print("\(kind): \(message)")
         }
         #endif
     }

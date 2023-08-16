@@ -135,6 +135,8 @@ extension Analytics {
         }
         #endif
         
+        Analytics.segmentLog(message: "checking settings", kind: .debug)
+
         let writeKey = self.configuration.values.writeKey
         let httpClient = HTTPClient(analytics: self)
         let systemState: System? = store.currentState()
